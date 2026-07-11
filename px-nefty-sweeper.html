@@ -106,21 +106,21 @@
             <button class="btn btn-secondary" id="authBtn" onclick="toggleAuth()">Connect Wallet</button>
         </div>
 
-        <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">1. Select NeftyBlocks Platform to Sweep:</label>
+        <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">1. Select NeftyBlocks Platform(s) to Sweep (multi-select for batch):</label>
         <div class="contract-grid">
-            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksd" onclick="selectContract('neftyblocksd')">Drops</button>
-            <button class="btn btn-secondary contract-btn" id="btn-blend.nefty" onclick="selectContract('blend.nefty')">Blends</button>
-            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksp" onclick="selectContract('neftyblocksp')">Packs</button>
+            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksd" onclick="toggleContract('neftyblocksd')">Drops</button>
+            <button class="btn btn-secondary contract-btn" id="btn-blend.nefty" onclick="toggleContract('blend.nefty')">Blends</button>
+            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksp" onclick="toggleContract('neftyblocksp')">Packs</button>
         </div>
 
         <div id="sweeperSection">
             <div class="balance-box">
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Available Balance inside Contract</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Total Available Balance (Selected Contracts)</div>
                 <div class="balance-amount" id="displayBalance">0</div>
                 <div style="color: var(--text-muted); font-size: 0.8rem;" id="balanceUnit">Fetching...</div>
             </div>
 
-            <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">2. Select Amount to Withdraw (RAM / Balance):</label>
+            <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">2. Select Amount to Withdraw (RAM / Balance) - applied per contract:</label>
             <div class="percentage-grid">
                 <button class="btn btn-secondary" onclick="calculatePercent(0.25)">25%</button>
                 <button class="btn btn-secondary" onclick="calculatePercent(0.50)">50%</button>
@@ -130,10 +130,10 @@
 
             <input type="number" id="withdrawInput" placeholder="Exact amount (e.g. 1234.0000 or bytes)" step="0.0001" />
 
-            <button class="btn" style="width: 100%; font-size: 1.1rem; padding: 15px;" onclick="executeSweep()">Sweep to Wallet</button>
+            <button class="btn" style="width: 100%; font-size: 1.1rem; padding: 15px;" onclick="executeSweep()">Execute Batch Sweep</button>
             
             <div style="margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); text-align: center;">
-                ⚠️ Always verify transaction details in your wallet. This tool uses Anchor Link for secure signing.
+                ⚠️ Click contracts to multi-select for batch tx. Always verify in wallet. Anchor Link signing.
             </div>
         </div>
     </div>
@@ -162,9 +162,8 @@
         });
 
         let walletSession = null;
-        let activeContract = null;
-        let currentMaxBalance = 0;
-        let balanceAssetInfo = '';
+        let selectedContracts = new Set(); // For batch support
+        let balances = {}; // contract -> {balance: number, assetInfo: string}
 
         anchorLink.restoreSession('PxNeftySweeper').then(session => {
             if (session) { 
@@ -197,74 +196,90 @@
                 userEl.innerText = walletSession.auth.actor;
                 userEl.style.color = 'var(--success)';
                 authBtn.innerText = 'Disconnect';
-                if(activeContract) fetchUserBalance();
             } else {
                 userEl.innerText = 'Not Connected';
                 userEl.style.color = 'var(--text-muted)';
                 authBtn.innerText = 'Connect Wallet';
+                selectedContracts.clear();
+                balances = {};
                 document.getElementById('sweeperSection').style.display = 'none';
+                document.querySelectorAll('.contract-btn').forEach(btn => {
+                    btn.classList.remove('btn-active');
+                    btn.classList.add('btn-secondary');
+                });
             }
         }
 
-        function selectContract(contractName) {
+        function toggleContract(contractName) {
             if (!walletSession) return alert("Please connect your wallet first!");
-            activeContract = contractName;
             
-            document.querySelectorAll('.contract-btn').forEach(btn => {
+            const btn = document.getElementById(`btn-${contractName.replace('.', '-')}`);
+            if (!btn) return;
+
+            if (selectedContracts.has(contractName)) {
+                selectedContracts.delete(contractName);
                 btn.classList.remove('btn-active');
                 btn.classList.add('btn-secondary');
-            });
-            const activeBtn = document.getElementById(`btn-${contractName.replace('.', '-')}`);
-            if (activeBtn) {
-                activeBtn.classList.remove('btn-secondary');
-                activeBtn.classList.add('btn-active');
+            } else {
+                selectedContracts.add(contractName);
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-active');
             }
 
-            document.getElementById('sweeperSection').style.display = 'block';
-            fetchUserBalance();
+            // Show sweeper if at least one selected
+            document.getElementById('sweeperSection').style.display = selectedContracts.size > 0 ? 'block' : 'none';
+            
+            if (selectedContracts.size > 0) {
+                fetchBalances();
+            }
         }
 
-        async function fetchUserBalance() {
+        async function fetchBalances() {
             const displayEl = document.getElementById('displayBalance');
             displayEl.innerText = "...";
-            currentMaxBalance = 0;
-            balanceAssetInfo = '';
+            
+            let totalBalance = 0;
+            let sampleAsset = '';
 
-            try {
-                const response = await fetch(`${NEFTY_CONFIG.rpcNode}/v1/chain/get_table_rows`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        json: true,
-                        code: activeContract,
-                        scope: activeContract, 
-                        table: NEFTY_CONFIG.tableName,
-                        lower_bound: walletSession.auth.actor.toString(),
-                        upper_bound: walletSession.auth.actor.toString(),
-                        limit: 1
-                    })
-                });
+            for (const contract of selectedContracts) {
+                try {
+                    const response = await fetch(`${NEFTY_CONFIG.rpcNode}/v1/chain/get_table_rows`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            json: true,
+                            code: contract,
+                            scope: contract, 
+                            table: NEFTY_CONFIG.tableName,
+                            lower_bound: walletSession.auth.actor.toString(),
+                            upper_bound: walletSession.auth.actor.toString(),
+                            limit: 1
+                        })
+                    });
 
-                const data = await response.json();
-                
-                if (data.rows && data.rows.length > 0) {
-                    const row = data.rows[0];
-                    let balanceString = row.balance || row.amount || row.ram || "0";
-                    let rawAmount = parseFloat(balanceString.toString().replace(/[^0-9.]/g, '')) || 0;
+                    const data = await response.json();
                     
-                    currentMaxBalance = rawAmount;
-                    balanceAssetInfo = balanceString.toString();
-                    displayEl.innerText = currentMaxBalance.toLocaleString();
-                    document.getElementById('balanceUnit').innerText = balanceAssetInfo.replace(/[0-9.,]/g, '').trim() || "Units";
-                } else {
-                    displayEl.innerText = "0";
-                    document.getElementById('balanceUnit').innerText = "No balance found";
+                    if (data.rows && data.rows.length > 0) {
+                        const row = data.rows[0];
+                        let balanceString = row.balance || row.amount || row.ram || "0";
+                        let rawAmount = parseFloat(balanceString.toString().replace(/[^0-9.]/g, '')) || 0;
+                        
+                        balances[contract] = { balance: rawAmount, assetInfo: balanceString.toString() };
+                        totalBalance += rawAmount;
+                        if (!sampleAsset) sampleAsset = balanceString.toString().replace(/[0-9.,]/g, '').trim() || "Units";
+                    } else {
+                        balances[contract] = { balance: 0, assetInfo: "0" };
+                    }
+                } catch (e) {
+                    console.error(`Fetch error for ${contract}:`, e);
+                    balances[contract] = { balance: 0, assetInfo: "Error" };
                 }
-            } catch (e) {
-                console.error("Fetch error:", e);
-                displayEl.innerText = "Error fetching";
-                document.getElementById('balanceUnit').innerText = "Check console";
             }
+
+            // Display aggregate
+            currentMaxBalance = totalBalance;
+            displayEl.innerText = totalBalance.toLocaleString();
+            document.getElementById('balanceUnit').innerText = `${sampleAsset} (across ${selectedContracts.size} contracts)`;
         }
 
         function calculatePercent(decimal) {
@@ -282,28 +297,37 @@
                 return alert("Please enter a valid positive amount to withdraw.");
             }
 
-            const actionPayload = {
-                account: activeContract,
-                name: NEFTY_CONFIG.actionName,
-                authorization: [walletSession.auth],
-                data: {
-                    owner: walletSession.auth.actor,
-                    amount: amountStr  
-                }
-            };
+            if (selectedContracts.size === 0) {
+                return alert("No contracts selected.");
+            }
+
+            const actions = [];
+
+            for (const contract of selectedContracts) {
+                const actionPayload = {
+                    account: contract,
+                    name: NEFTY_CONFIG.actionName,
+                    authorization: [walletSession.auth],
+                    data: {
+                        owner: walletSession.auth.actor,
+                        amount: amountStr
+                    }
+                };
+                actions.push(actionPayload);
+            }
 
             try {
                 const result = await walletSession.transact({ 
-                    actions: [actionPayload] 
+                    actions: actions 
                 }, {
                     blocksBehind: 3,
                     expireSeconds: 30
                 });
-                alert(`✅ Sweep Successful!\n\nTransaction ID: ${result.processed.id}\n\nBalance will update shortly.`);
-                fetchUserBalance(); 
+                alert(`✅ Batch Sweep Successful!\n\nTransaction ID: ${result.processed.id}\n\nSwept from ${selectedContracts.size} contract(s).`);
+                fetchBalances();
             } catch (e) {
                 console.error(e);
-                alert(`❌ Transaction Failed:\n${e.message || e}`);
+                alert(`❌ Batch Transaction Failed:\n${e.message || e}`);
             }
         }
 
