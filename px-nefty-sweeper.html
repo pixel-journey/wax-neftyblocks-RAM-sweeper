@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Journey - Nefty RAM Sweeper</title>
+    
+    <script src="https://unpkg.com/anchor-link@3.5.0/lib/anchor-link.bundle.js"></script>
+    <script src="https://unpkg.com/anchor-link-browser-transport@3.2.1/lib/anchor-link-browser-transport.bundle.js"></script>
+    
+    <style>
+        :root {
+            --bg-main: #141419;
+            --bg-card: #202029;
+            --bg-input: #181822;
+            --accent: #ff9f1c;
+            --accent-bright: #ffb703;
+            --text-light: #f8f9fa;
+            --text-muted: #98a6ad;
+            --success: #2ec4b6;
+            --danger: #e71d36;
+            --border-glow: #3d3d5c;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-light);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .brand-header { text-align: center; margin-bottom: 30px; }
+        .brand-logo {
+            font-size: 2.2rem; font-weight: 900; letter-spacing: 2px;
+            color: var(--accent); margin: 0; text-transform: uppercase;
+        }
+        .brand-handle { color: var(--success); font-family: monospace; font-size: 1rem; }
+
+        .container {
+            background: var(--bg-card); padding: 35px; border-radius: 16px;
+            border: 2px solid var(--border-glow); box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+            width: 100%; max-width: 500px; box-sizing: border-box;
+        }
+
+        .wallet-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--bg-input); padding: 15px; border-radius: 8px;
+            margin-bottom: 25px; border: 1px solid #2d2d3d;
+        }
+        
+        .btn {
+            background: var(--accent); color: #000; border: none; padding: 12px 20px;
+            font-size: 0.95rem; font-weight: 700; border-radius: 6px; cursor: pointer;
+            transition: 0.2s; text-align: center;
+        }
+        .btn:hover { background: var(--accent-bright); }
+        .btn-secondary { background: #3a3a4e; color: var(--text-light); }
+        .btn-secondary:hover { background: #4a4a62; }
+        .btn-active { background: var(--success); color: #000; }
+
+        .contract-grid {
+            display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 25px;
+        }
+
+        .balance-box {
+            background: rgba(255,159,28,0.1); border: 1px solid var(--accent);
+            padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 25px;
+        }
+        .balance-amount { font-size: 2rem; font-weight: bold; color: var(--accent); margin: 10px 0; }
+
+        .percentage-grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;
+        }
+
+        input {
+            width: 100%; padding: 14px; margin-bottom: 20px; border-radius: 6px;
+            border: 1px solid #3a3a4e; background: var(--bg-input); color: var(--text-light);
+            font-size: 1.1rem; box-sizing: border-box; text-align: center; outline: none;
+        }
+        input:focus { border-color: var(--accent); }
+
+        #sweeperSection { display: none; }
+        
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="brand-header">
+        <h1 class="brand-logo">PIXEL JOURNEY</h1>
+        <span class="brand-handle">@PxJourney • Nefty RAM Sweeper</span>
+    </div>
+
+    <div class="container">
+        <div class="wallet-bar">
+            <div id="walletUser" style="color: var(--text-muted); font-weight: bold;">Not Connected</div>
+            <button class="btn btn-secondary" id="authBtn" onclick="toggleAuth()">Connect Wallet</button>
+        </div>
+
+        <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">1. Select NeftyBlocks Platform to Sweep:</label>
+        <div class="contract-grid">
+            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksd" onclick="selectContract('neftyblocksd')">Drops</button>
+            <button class="btn btn-secondary contract-btn" id="btn-blend.nefty" onclick="selectContract('blend.nefty')">Blends</button>
+            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksp" onclick="selectContract('neftyblocksp')">Packs</button>
+        </div>
+
+        <div id="sweeperSection">
+            <div class="balance-box">
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Available Balance inside Contract</div>
+                <div class="balance-amount" id="displayBalance">0</div>
+                <div style="color: var(--text-muted); font-size: 0.8rem;" id="balanceUnit">Fetching...</div>
+            </div>
+
+            <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">2. Select Amount to Withdraw (RAM / Balance):</label>
+            <div class="percentage-grid">
+                <button class="btn btn-secondary" onclick="calculatePercent(0.25)">25%</button>
+                <button class="btn btn-secondary" onclick="calculatePercent(0.50)">50%</button>
+                <button class="btn btn-secondary" onclick="calculatePercent(0.75)">75%</button>
+                <button class="btn btn-secondary" style="border: 1px solid var(--accent);" onclick="calculatePercent(1.00)">100%</button>
+            </div>
+
+            <input type="number" id="withdrawInput" placeholder="Exact amount (e.g. 1234.0000 or bytes)" step="0.0001" />
+
+            <button class="btn" style="width: 100%; font-size: 1.1rem; padding: 15px;" onclick="executeSweep()">Sweep to Wallet</button>
+            
+            <div style="margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); text-align: center;">
+                ⚠️ Always verify transaction details in your wallet. This tool uses Anchor Link for secure signing.
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Pixel Journey Educational Tools • Open Source on GitHub • WAX Blockchain</p>
+        <p><a href="https://github.com/pixel-journey/wax-neftyblocks-RAM-sweeper" style="color: var(--accent);">View Source</a> | Made for the Community</p>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const NEFTY_CONFIG = {
+            tableName: 'balances', 
+            actionName: 'withdraw', 
+            rpcNode: 'https://wax.greymass.com'
+        };
+        // ---------------------
+
+        const transport = new AnchorLinkBrowserTransport();
+        const anchorLink = new AnchorLink({
+            transport,
+            chains: [{
+                chainId: '1064487b3cd1a897ce03ae5b6a865651747e2e152090f99c1d19d44e01aea5a4',
+                nodeUrl: NEFTY_CONFIG.rpcNode,
+            }]
+        });
+
+        let walletSession = null;
+        let activeContract = null;
+        let currentMaxBalance = 0;
+        let balanceAssetInfo = '';
+
+        anchorLink.restoreSession('PxNeftySweeper').then(session => {
+            if (session) { 
+                walletSession = session; 
+                updateWalletUI(); 
+            }
+        });
+
+        async function toggleAuth() {
+            if (walletSession) {
+                await anchorLink.removeSession('PxNeftySweeper', walletSession.auth, walletSession.chainId);
+                walletSession = null;
+                updateWalletUI();
+            } else {
+                try {
+                    const identity = await anchorLink.login('PxNeftySweeper');
+                    walletSession = identity.session;
+                    updateWalletUI();
+                } catch (e) { 
+                    console.error("Login closed", e); 
+                    alert("Wallet connection cancelled.");
+                }
+            }
+        }
+
+        function updateWalletUI() {
+            const userEl = document.getElementById('walletUser');
+            const authBtn = document.getElementById('authBtn');
+            if (walletSession) {
+                userEl.innerText = walletSession.auth.actor;
+                userEl.style.color = 'var(--success)';
+                authBtn.innerText = 'Disconnect';
+                if(activeContract) fetchUserBalance();
+            } else {
+                userEl.innerText = 'Not Connected';
+                userEl.style.color = 'var(--text-muted)';
+                authBtn.innerText = 'Connect Wallet';
+                document.getElementById('sweeperSection').style.display = 'none';
+            }
+        }
+
+        function selectContract(contractName) {
+            if (!walletSession) return alert("Please connect your wallet first!");
+            activeContract = contractName;
+            
+            document.querySelectorAll('.contract-btn').forEach(btn => {
+                btn.classList.remove('btn-active');
+                btn.classList.add('btn-secondary');
+            });
+            const activeBtn = document.getElementById(`btn-${contractName.replace('.', '-')}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('btn-secondary');
+                activeBtn.classList.add('btn-active');
+            }
+
+            document.getElementById('sweeperSection').style.display = 'block';
+            fetchUserBalance();
+        }
+
+        async function fetchUserBalance() {
+            const displayEl = document.getElementById('displayBalance');
+            displayEl.innerText = "...";
+            currentMaxBalance = 0;
+            balanceAssetInfo = '';
+
+            try {
+                const response = await fetch(`${NEFTY_CONFIG.rpcNode}/v1/chain/get_table_rows`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        json: true,
+                        code: activeContract,
+                        scope: activeContract, 
+                        table: NEFTY_CONFIG.tableName,
+                        lower_bound: walletSession.auth.actor.toString(),
+                        upper_bound: walletSession.auth.actor.toString(),
+                        limit: 1
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.rows && data.rows.length > 0) {
+                    const row = data.rows[0];
+                    let balanceString = row.balance || row.amount || row.ram || "0";
+                    let rawAmount = parseFloat(balanceString.toString().replace(/[^0-9.]/g, '')) || 0;
+                    
+                    currentMaxBalance = rawAmount;
+                    balanceAssetInfo = balanceString.toString();
+                    displayEl.innerText = currentMaxBalance.toLocaleString();
+                    document.getElementById('balanceUnit').innerText = balanceAssetInfo.replace(/[0-9.,]/g, '').trim() || "Units";
+                } else {
+                    displayEl.innerText = "0";
+                    document.getElementById('balanceUnit').innerText = "No balance found";
+                }
+            } catch (e) {
+                console.error("Fetch error:", e);
+                displayEl.innerText = "Error fetching";
+                document.getElementById('balanceUnit').innerText = "Check console";
+            }
+        }
+
+        function calculatePercent(decimal) {
+            if(currentMaxBalance <= 0) {
+                alert("No balance to calculate from.");
+                return;
+            }
+            const calc = Math.floor(currentMaxBalance * decimal * 10000) / 10000; 
+            document.getElementById('withdrawInput').value = calc;
+        }
+
+        async function executeSweep() {
+            const amountStr = document.getElementById('withdrawInput').value.trim();
+            if(!amountStr || parseFloat(amountStr) <= 0) {
+                return alert("Please enter a valid positive amount to withdraw.");
+            }
+
+            const actionPayload = {
+                account: activeContract,
+                name: NEFTY_CONFIG.actionName,
+                authorization: [walletSession.auth],
+                data: {
+                    owner: walletSession.auth.actor,
+                    amount: amountStr  
+                }
+            };
+
+            try {
+                const result = await walletSession.transact({ 
+                    actions: [actionPayload] 
+                }, {
+                    blocksBehind: 3,
+                    expireSeconds: 30
+                });
+                alert(`✅ Sweep Successful!\n\nTransaction ID: ${result.processed.id}\n\nBalance will update shortly.`);
+                fetchUserBalance(); 
+            } catch (e) {
+                console.error(e);
+                alert(`❌ Transaction Failed:\n${e.message || e}`);
+            }
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && document.getElementById('sweeperSection').style.display !== 'none') {
+                executeSweep();
+            }
+        });
+    </script>
+</body>
+</html>
