@@ -1,12 +1,10 @@
-# Pixel Journey - wax-neftyblocks-RAM-sweeper
+# Pixel Journey — wax-neftyblocks-RAM-sweeper
 
 **Simple, Educational, Brain-Dead Easy NeftyBlocks RAM / Balance Sweeper for WAX Blockchain**
 
 A single-file, self-contained HTML tool that lets users instantly reclaim their RAM balances (or deposited tokens) from NeftyBlocks contracts without needing to know ABIs, JSON structures, or complex tooling.
 
 Perfect for collectors, traders, and community members who just want to **"Get my stuff back"**.
-
-![Pixel Journey Branding](https://via.placeholder.com/800x200/ff9f1c/141419?text=Pixel+Journey+Nefty+RAM+Sweeper) <!-- Replace with actual image if available -->
 
 ## ✨ Features
 
@@ -57,20 +55,23 @@ Add more contracts, improve balance parsing, add multi-account support, etc.
 
 ## 📋 Standards Compliance
 
-This repository follows **Pixel Journey Standards**:
+This repository follows the **PX Perfection Standard**:
 - High-quality educational documentation
 - Clean, maintainable, auditable code
 - User-first UX with strong security practices
 - Open source for community benefit
 
-See [pixel-journey-standards](https://github.com/pixel-journey/pixel-journey-standards) for more.
+See [`pixel-journey-standards`](https://github.com/pixel-journey/pixel-journey-standards) for the full codex.
 
 ## 🔗 Related Resources
 
-- [Pixel Journey Docs](https://docs.pixeljourney.xyz/)
+- [Pixel Journey Website](https://pixeljourney.xyz)
+- [Official Docs](https://docs.pixeljourney.xyz)
 - [WAX Developer Guides](https://docs.pixeljourney.xyz/education/antelope-ecosystem-guides/wax)
+- [Standards Codex](https://github.com/pixel-journey/pixel-journey-standards)
 - [NeftyBlocks](https://neftyblocks.com)
 - [Anchor Link](https://github.com/greymass/anchor-link)
+- [Discord](https://discord.gg/WQ59KEBSMp) · [𝕏 @PxJourney](https://x.com/PxJourney)
 
 ## 🤝 Contributing
 
@@ -84,7 +85,7 @@ Please follow our [Contributing Guidelines](https://github.com/pixel-journey/pix
 
 ## 📜 License
 
-MIT - Feel free to use, modify, and distribute. Attribution to Pixel Journey appreciated.
+MIT — Feel free to use, modify, and distribute. Attribution to Pixel Journey appreciated.
 
 ---
 
