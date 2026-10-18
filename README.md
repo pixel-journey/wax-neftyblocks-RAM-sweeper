@@ -1,5 +1,8 @@
 # wax-neftyblocks-RAM-sweeper
 
+> **Trust Label:** `recovery-documentation` (educational-reference for the recovery pattern)  
+> **Verification:** See [VERIFICATION-LOG.md](VERIFICATION-LOG.md) for honest status (currently UNTESTED for live table reads / withdraws).
+
 > **Status:** 🔄 Recovery toolkit (PX + ECOSYSTEM-RESILIENCE)  
 > **Trust level:** **Recovery only** — not recommended for new high-value deposits  
 > **Catalog:** [wax-ecosystem-blueprint-catalog](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog) · [ECOSYSTEM-RESILIENCE.md](https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog/blob/main/ECOSYSTEM-RESILIENCE.md)
