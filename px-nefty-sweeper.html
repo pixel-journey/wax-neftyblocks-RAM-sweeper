@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Journey - Nefty RAM Sweeper</title>
-    
+    <title>Pixel Journey — Nefty Recovery Sweeper (RAM / Balances)</title>
+
     <script src="https://unpkg.com/anchor-link@3.5.0/lib/anchor-link.bundle.js"></script>
     <script src="https://unpkg.com/anchor-link-browser-transport@3.2.1/lib/anchor-link-browser-transport.bundle.js"></script>
-    
+
     <style>
         :root {
             --bg-main: #141419;
@@ -20,6 +20,7 @@
             --success: #2ec4b6;
             --danger: #e71d36;
             --border-glow: #3d3d5c;
+            --warn: #ffb703;
         }
 
         body {
@@ -33,12 +34,24 @@
             align-items: center;
         }
 
-        .brand-header { text-align: center; margin-bottom: 30px; }
+        .brand-header { text-align: center; margin-bottom: 20px; }
         .brand-logo {
             font-size: 2.2rem; font-weight: 900; letter-spacing: 2px;
             color: var(--accent); margin: 0; text-transform: uppercase;
         }
         .brand-handle { color: var(--success); font-family: monospace; font-size: 1rem; }
+
+        .banner-warn {
+            max-width: 500px; width: 100%; box-sizing: border-box;
+            background: rgba(231, 29, 54, 0.12);
+            border: 1px solid var(--danger);
+            color: #ffc9ce;
+            padding: 14px 16px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            line-height: 1.45;
+            margin-bottom: 20px;
+        }
 
         .container {
             background: var(--bg-card); padding: 35px; border-radius: 16px;
@@ -51,7 +64,7 @@
             background: var(--bg-input); padding: 15px; border-radius: 8px;
             margin-bottom: 25px; border: 1px solid #2d2d3d;
         }
-        
+
         .btn {
             background: var(--accent); color: #000; border: none; padding: 12px 20px;
             font-size: 0.95rem; font-weight: 700; border-radius: 6px; cursor: pointer;
@@ -84,73 +97,83 @@
         input:focus { border-color: var(--accent); }
 
         #sweeperSection { display: none; }
-        
+
         .footer {
             margin-top: 40px;
             text-align: center;
             color: var(--text-muted);
             font-size: 0.8rem;
+            max-width: 500px;
         }
+        .footer a { color: var(--accent); }
     </style>
 </head>
 <body>
 
     <div class="brand-header">
         <h1 class="brand-logo">PIXEL JOURNEY</h1>
-        <span class="brand-handle">@PxJourney • Nefty RAM Sweeper</span>
+        <span class="brand-handle">@PxJourney • Nefty Recovery Sweeper</span>
+    </div>
+
+    <div class="banner-warn" role="status">
+        <strong>Recovery only.</strong> NeftyBlocks-class product UIs are widely reported offline / out of business.
+        Do <em>not</em> deposit new high-value funds into these contracts. Verify each account, table, and ABI on a
+        block explorer before signing. Quantity formats must match the contract. This page never holds your keys.
     </div>
 
     <div class="container">
         <div class="wallet-bar">
             <div id="walletUser" style="color: var(--text-muted); font-weight: bold;">Not Connected</div>
-            <button class="btn btn-secondary" id="authBtn" onclick="toggleAuth()">Connect Wallet</button>
+            <button class="btn btn-secondary" id="authBtn" type="button" onclick="toggleAuth()">Connect Wallet</button>
         </div>
 
-        <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">1. Select NeftyBlocks Platform(s) to Sweep (multi-select for batch):</label>
+        <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">1. Select contract(s) to attempt recovery (multi-select):</label>
         <div class="contract-grid">
-            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksd" onclick="toggleContract('neftyblocksd')">Drops</button>
-            <button class="btn btn-secondary contract-btn" id="btn-blend.nefty" onclick="toggleContract('blend.nefty')">Blends</button>
-            <button class="btn btn-secondary contract-btn" id="btn-neftyblocksp" onclick="toggleContract('neftyblocksp')">Packs</button>
+            <button type="button" class="btn btn-secondary contract-btn" id="btn-neftyblocksd" onclick="toggleContract('neftyblocksd')">Drops</button>
+            <button type="button" class="btn btn-secondary contract-btn" id="btn-blend.nefty" onclick="toggleContract('blend.nefty')">Blends</button>
+            <button type="button" class="btn btn-secondary contract-btn" id="btn-neftyblocksp" onclick="toggleContract('neftyblocksp')">Packs</button>
         </div>
 
         <div id="sweeperSection">
             <div class="balance-box">
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Total Available Balance (Selected Contracts)</div>
+                <div style="color: var(--text-muted); font-size: 0.9rem;">Parsed balance (selected contracts)</div>
                 <div class="balance-amount" id="displayBalance">0</div>
-                <div style="color: var(--text-muted); font-size: 0.8rem;" id="balanceUnit">Fetching...</div>
+                <div style="color: var(--text-muted); font-size: 0.8rem;" id="balanceUnit">Select contracts after connect</div>
             </div>
 
-            <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">2. Select Amount to Withdraw (RAM / Balance) - applied per contract:</label>
+            <label style="display:block; margin-bottom: 10px; color: var(--text-muted);">2. Amount (applied to each selected contract — prefer one contract if unsure):</label>
             <div class="percentage-grid">
-                <button class="btn btn-secondary" onclick="calculatePercent(0.25)">25%</button>
-                <button class="btn btn-secondary" onclick="calculatePercent(0.50)">50%</button>
-                <button class="btn btn-secondary" onclick="calculatePercent(0.75)">75%</button>
-                <button class="btn btn-secondary" style="border: 1px solid var(--accent);" onclick="calculatePercent(1.00)">100%</button>
+                <button type="button" class="btn btn-secondary" onclick="calculatePercent(0.25)">25%</button>
+                <button type="button" class="btn btn-secondary" onclick="calculatePercent(0.50)">50%</button>
+                <button type="button" class="btn btn-secondary" onclick="calculatePercent(0.75)">75%</button>
+                <button type="button" class="btn btn-secondary" style="border: 1px solid var(--accent);" onclick="calculatePercent(1.00)">100%</button>
             </div>
 
-            <input type="number" id="withdrawInput" placeholder="Exact amount (e.g. 1234.0000 or bytes)" step="0.0001" />
+            <input type="text" id="withdrawInput" placeholder="Exact quantity string (match contract precision)" autocomplete="off" />
 
-            <button class="btn" style="width: 100%; font-size: 1.1rem; padding: 15px;" onclick="executeSweep()">Execute Batch Sweep</button>
-            
-            <div style="margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); text-align: center;">
-                ⚠️ Click contracts to multi-select for batch tx. Always verify in wallet. Anchor Link signing.
+            <button type="button" class="btn" style="width: 100%; font-size: 1.1rem; padding: 15px;" onclick="executeSweep()">Review & Sign Sweep</button>
+
+            <div style="margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); text-align: center; line-height: 1.4;">
+                Always verify the wallet prompt (contract, action, amount). Open-source educational tool — not financial advice.
             </div>
         </div>
     </div>
 
     <div class="footer">
-        <p>Pixel Journey Educational Tools • Open Source on GitHub • WAX Blockchain</p>
-        <p><a href="https://github.com/pixel-journey/wax-neftyblocks-RAM-sweeper" style="color: var(--accent);">View Source</a> | Made for the Community</p>
+        <p>Pixel Journey · Recovery toolkit · WAX</p>
+        <p>
+            <a href="https://github.com/pixel-journey/wax-neftyblocks-RAM-sweeper">Source</a>
+            ·
+            <a href="https://github.com/pixel-journey/wax-ecosystem-blueprint-catalog/blob/main/ECOSYSTEM-RESILIENCE.md">Ecosystem resilience</a>
+        </p>
     </div>
 
     <script>
-        // --- CONFIGURATION ---
         const NEFTY_CONFIG = {
-            tableName: 'balances', 
-            actionName: 'withdraw', 
+            tableName: 'balances',
+            actionName: 'withdraw',
             rpcNode: 'https://wax.greymass.com'
         };
-        // ---------------------
 
         const transport = new AnchorLinkBrowserTransport();
         const anchorLink = new AnchorLink({
@@ -162,13 +185,14 @@
         });
 
         let walletSession = null;
-        let selectedContracts = new Set(); // For batch support
-        let balances = {}; // contract -> {balance: number, assetInfo: string}
+        let selectedContracts = new Set();
+        let balances = {};
+        let currentMaxBalance = 0;
 
         anchorLink.restoreSession('PxNeftySweeper').then(session => {
-            if (session) { 
-                walletSession = session; 
-                updateWalletUI(); 
+            if (session) {
+                walletSession = session;
+                updateWalletUI();
             }
         });
 
@@ -182,9 +206,9 @@
                     const identity = await anchorLink.login('PxNeftySweeper');
                     walletSession = identity.session;
                     updateWalletUI();
-                } catch (e) { 
-                    console.error("Login closed", e); 
-                    alert("Wallet connection cancelled.");
+                } catch (e) {
+                    console.error('Login closed', e);
+                    alert('Wallet connection cancelled.');
                 }
             }
         }
@@ -202,6 +226,7 @@
                 authBtn.innerText = 'Connect Wallet';
                 selectedContracts.clear();
                 balances = {};
+                currentMaxBalance = 0;
                 document.getElementById('sweeperSection').style.display = 'none';
                 document.querySelectorAll('.contract-btn').forEach(btn => {
                     btn.classList.remove('btn-active');
@@ -211,9 +236,9 @@
         }
 
         function toggleContract(contractName) {
-            if (!walletSession) return alert("Please connect your wallet first!");
-            
-            const btn = document.getElementById(`btn-${contractName.replace('.', '-')}`);
+            if (!walletSession) return alert('Please connect your wallet first.');
+
+            const btn = document.getElementById('btn-' + contractName.replace('.', '-'));
             if (!btn) return;
 
             if (selectedContracts.has(contractName)) {
@@ -226,9 +251,8 @@
                 btn.classList.add('btn-active');
             }
 
-            // Show sweeper if at least one selected
             document.getElementById('sweeperSection').style.display = selectedContracts.size > 0 ? 'block' : 'none';
-            
+
             if (selectedContracts.size > 0) {
                 fetchBalances();
             }
@@ -236,20 +260,20 @@
 
         async function fetchBalances() {
             const displayEl = document.getElementById('displayBalance');
-            displayEl.innerText = "...";
-            
+            displayEl.innerText = '...';
+
             let totalBalance = 0;
             let sampleAsset = '';
 
             for (const contract of selectedContracts) {
                 try {
-                    const response = await fetch(`${NEFTY_CONFIG.rpcNode}/v1/chain/get_table_rows`, {
+                    const response = await fetch(NEFTY_CONFIG.rpcNode + '/v1/chain/get_table_rows', {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             json: true,
                             code: contract,
-                            scope: contract, 
+                            scope: contract,
                             table: NEFTY_CONFIG.tableName,
                             lower_bound: walletSession.auth.actor.toString(),
                             upper_bound: walletSession.auth.actor.toString(),
@@ -258,53 +282,64 @@
                     });
 
                     const data = await response.json();
-                    
+
                     if (data.rows && data.rows.length > 0) {
                         const row = data.rows[0];
-                        let balanceString = row.balance || row.amount || row.ram || "0";
+                        let balanceString = row.balance || row.amount || row.ram || '0';
                         let rawAmount = parseFloat(balanceString.toString().replace(/[^0-9.]/g, '')) || 0;
-                        
+
                         balances[contract] = { balance: rawAmount, assetInfo: balanceString.toString() };
                         totalBalance += rawAmount;
-                        if (!sampleAsset) sampleAsset = balanceString.toString().replace(/[0-9.,]/g, '').trim() || "Units";
+                        if (!sampleAsset) {
+                            sampleAsset = balanceString.toString().replace(/[0-9.,]/g, '').trim() || 'units';
+                        }
                     } else {
-                        balances[contract] = { balance: 0, assetInfo: "0" };
+                        balances[contract] = { balance: 0, assetInfo: '0' };
                     }
                 } catch (e) {
-                    console.error(`Fetch error for ${contract}:`, e);
-                    balances[contract] = { balance: 0, assetInfo: "Error" };
+                    console.error('Fetch error for ' + contract + ':', e);
+                    balances[contract] = { balance: 0, assetInfo: 'Error' };
                 }
             }
 
-            // Display aggregate
             currentMaxBalance = totalBalance;
             displayEl.innerText = totalBalance.toLocaleString();
-            document.getElementById('balanceUnit').innerText = `${sampleAsset} (across ${selectedContracts.size} contracts)`;
+            document.getElementById('balanceUnit').innerText =
+                sampleAsset + ' (parsed across ' + selectedContracts.size + ' contract(s) — confirm on explorer)';
         }
 
         function calculatePercent(decimal) {
-            if(currentMaxBalance <= 0) {
-                alert("No balance to calculate from.");
+            if (currentMaxBalance <= 0) {
+                alert('No parsed balance to calculate from. Check explorer tables if you expect funds.');
                 return;
             }
-            const calc = Math.floor(currentMaxBalance * decimal * 10000) / 10000; 
-            document.getElementById('withdrawInput').value = calc;
+            const calc = Math.floor(currentMaxBalance * decimal * 10000) / 10000;
+            document.getElementById('withdrawInput').value = String(calc);
         }
 
         async function executeSweep() {
             const amountStr = document.getElementById('withdrawInput').value.trim();
-            if(!amountStr || parseFloat(amountStr) <= 0) {
-                return alert("Please enter a valid positive amount to withdraw.");
+            if (!amountStr || parseFloat(amountStr) <= 0) {
+                return alert('Enter a valid positive amount (match contract quantity format).');
             }
 
             if (selectedContracts.size === 0) {
-                return alert("No contracts selected.");
+                return alert('No contracts selected.');
             }
 
-            const actions = [];
+            const list = Array.from(selectedContracts).join(', ');
+            const ok = confirm(
+                'RECOVERY SIGNING\n\n' +
+                'Contracts: ' + list + '\n' +
+                'Action: ' + NEFTY_CONFIG.actionName + '\n' +
+                'Amount string per contract: ' + amountStr + '\n\n' +
+                'Confirm this matches explorer + ABI. Cancel if unsure.'
+            );
+            if (!ok) return;
 
+            const actions = [];
             for (const contract of selectedContracts) {
-                const actionPayload = {
+                actions.push({
                     account: contract,
                     name: NEFTY_CONFIG.actionName,
                     authorization: [walletSession.auth],
@@ -312,31 +347,22 @@
                         owner: walletSession.auth.actor,
                         amount: amountStr
                     }
-                };
-                actions.push(actionPayload);
+                });
             }
 
             try {
-                const result = await walletSession.transact({ 
-                    actions: actions 
-                }, {
+                const result = await walletSession.transact({ actions: actions }, {
                     blocksBehind: 3,
                     expireSeconds: 30
                 });
-                alert(`✅ Batch Sweep Successful!\n\nTransaction ID: ${result.processed.id}\n\nSwept from ${selectedContracts.size} contract(s).`);
+                const txId = (result.processed && result.processed.id) || (result.transaction && result.transaction.id) || 'see wallet';
+                alert('Sweep submitted.\n\nTx: ' + txId + '\n\nRe-check balances on explorer.');
                 fetchBalances();
             } catch (e) {
                 console.error(e);
-                alert(`❌ Batch Transaction Failed:\n${e.message || e}`);
+                alert('Transaction failed or cancelled:\n' + (e.message || e));
             }
         }
-
-        // Keyboard support
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && document.getElementById('sweeperSection').style.display !== 'none') {
-                executeSweep();
-            }
-        });
     </script>
 </body>
 </html>
